@@ -185,7 +185,7 @@
     <input id="custPhone" type="tel" placeholder="Телефон" style="width:100%; box-sizing:border-box; margin-top:6px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--btn-bg); color:var(--txt); font-size:13px;">
     <input id="custEmail" type="email" placeholder="Ваш e-mail" style="width:100%; box-sizing:border-box; margin-top:6px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--btn-bg); color:var(--txt); font-size:13px;">
     <button id="sendOrder" style="margin-top:6px; width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--acc); background:var(--acc); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer;">Отправить заказ на почту</button>
-    <div class="note" style="margin-top:4px">Заказ отправляется на cncap@mail.ru напрямую с сайта вместе с полной спецификацией.</div>
+    <div class="note" style="margin-top:4px">Заказ откроется в вашей почтовой программе письмом на cncap@mail.ru с полной спецификацией.</div>
 
     <div class="dims">
       <div><b id="dims">Столешница: 1600 × 700 × 16 мм</b></div>
@@ -1204,15 +1204,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   }
 
 
-  // ================= ОТПРАВКА ЗАКАЗА НА ПОЧТУ (EmailJS) =================
-  // Письмо уходит напрямую с сайта через бесплатный сервис EmailJS.
-  const EMAILJS_SERVICE = "service_r64sduo";
-  const EMAILJS_TEMPLATE = "template_1n6hp29";
-  const EMAILJS_PUBLIC = "Bvf9rwzqGHEtl4S7K";
-  const ORDER_RECIPIENT = "cncap@mail.ru";
-
-  async function sendOrder() {
-    const btn = document.getElementById("sendOrder");
+  // ================= ОТПРАВКА ЗАКАЗА НА ПОЧТУ =================
+  function sendOrder() {
     try {
       const name = (document.getElementById("custName").value || "").trim();
       const phone = (document.getElementById("custPhone").value || "").trim();
@@ -1225,46 +1218,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         "Имя: " + (name || "—") + "\n" +
         "Телефон: " + (phone || "—") + "\n" +
         "E-mail: " + (email || "—") + "\n";
-      const subject = "Заказ: 3D конфигурация стола " + state.W + "×" + state.D + "×" + state.H + " мм";
+      const subject = encodeURIComponent("Заказ: 3D конфигурация стола " + state.W + "×" + state.D + "×" + state.H + " мм");
+      const bodyEnc = encodeURIComponent(body);
+      const mailto = "mailto:cncap@mail.ru?subject=" + subject + "&body=" + bodyEnc;
 
-      // Параметры, передаваемые в EmailJS-шаблон.
-      // Если в вашем шаблоне поле спецификации называется иначе, поправьте ключ "message".
-      const params = {
-        to_email: ORDER_RECIPIENT,
-        subject: subject,
-        message: body,
-        from_name: name || "Клиент",
-        reply_to: email || "",
-        phone: phone || ""
-      };
-
-      const oldText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = "Отправляю…";
-      try {
-        const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            service_id: EMAILJS_SERVICE,
-            template_id: EMAILJS_TEMPLATE,
-            user_id: EMAILJS_PUBLIC,
-            template_params: params
-          })
-        });
-        if (!resp.ok) {
-          let detail = "";
-          try { detail = " (" + (await resp.text()) + ")"; } catch (e) {}
-          throw new Error("Сервис вернул " + resp.status + detail);
-        }
-        alert("Заказ отправлен на " + ORDER_RECIPIENT + "!\n\nМы свяжемся с вами в ближайшее время.");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = oldText;
-      }
+      window.location.href = mailto;
     } catch (e) {
       console.error(e);
-      alert("Не удалось отправить заказ. Проверьте, что контакты заполнены, и попробуйте ещё раз.\n\n" + e.message);
+      alert("Не удалось сформировать заказ: " + e.message);
     }
   }
   document.getElementById("sendOrder").addEventListener("click", sendOrder);
