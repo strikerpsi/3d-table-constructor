@@ -780,23 +780,38 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       extraKeys.drawer = kDraw;
       clearGroup(drawerGroup);
       if (state.drawer) {
+        // Внутренние грани опор ног зависят от ширины профиля A:
+        //   левая опора занимает [-A/2, A/2]   -> внутр. грань z = A/2
+        //   правая опора занимает [(W-60)-A/2, ...] -> внутр. грань z = (W-60)-A/2
+        // Ящик и его опоры не должны заходить на ноги => вся сборка в z лежит в [innerL, innerR].
+        const innerL = A / 2;
+        const innerR = (state.W - 60) - A / 2;
+        const gapZ = innerR - innerL;                    // свободный пролёт между ногами по z
         const maxX = Math.max(200, state.D - 2 * B - 60);  // макс. глубина ящика по x
-        const maxZ = Math.max(300, state.W - 90);          // макс. ширина ящика по z
-        const dz = Math.min(state.drawerW, maxZ);          // ширина ящика вдоль длинной стороны (z)
+        const maxZ = Math.max(200, gapZ - 24);             // макс. ширина ящика по z (не заходить на ноги)
+        const dz = Math.max(120, Math.min(state.drawerW, maxZ)); // ширина ящика вдоль длинной стороны (z)
         const dx = Math.min(state.drawerD, maxX);          // глубина ящика (x)
         const ch = Math.min(state.drawerH, 260);           // высота ящика/короба
-        const zc = state.drawerSide === "left" ? 280
-                 : state.drawerSide === "right" ? state.W - 280
-                 : state.W / 2;                             // положение вдоль длинной стороны
+        const cd = dz + 24;                                // габарит короба по z
+        // положение центра короба строго внутри пролёта (с отступом от ног)
+        const half = cd / 2;
+        const margin = 14;
+        let zc;
+        if (state.drawerSide === "left") zc = innerL + margin + half;
+        else if (state.drawerSide === "right") zc = innerR - margin - half;
+        else zc = (innerL + innerR) / 2;
+        zc = Math.max(innerL + margin + half, Math.min(innerR - margin - half, zc));
         const railY = legTop - B;                           // низ верхней царги — уровень крепления
         const cy = railY - 4 - ch / 2 - 8;                  // центр короба/ящика (ниже царги)
-        const cw = dx + 24, cd = dz + 24;                   // габариты короба
+        const cw = dx + 24;                                 // габарит короба по x
         const caseX = state.D / 2;                          // короб закреплён по центру глубины
         const slide = Math.max(0, Math.min(state.drawerSlide, dx));
         const xc = caseX - slide;                           // ящик выдвигается вперёд (к x=0)
-        // поперечины, крепящиеся к передней и задней царгам (вдоль z)
-        addBox(drawerGroup, matMetal, 10, 8, state.W - 40, caseX - cw / 2 - 8, railY - 4, (state.W - 60) / 2);
-        addBox(drawerGroup, matMetal, 10, 8, state.W - 40, caseX + cw / 2 + 8, railY - 4, (state.W - 60) / 2);
+        // опорные поперечины — только между внутренними гранями опор (не на ноги)
+        const zMid = (innerL + innerR) / 2;
+        const railLen = gapZ;
+        addBox(drawerGroup, matMetal, 10, 8, railLen, caseX - cw / 2 - 8, railY - 4, zMid);
+        addBox(drawerGroup, matMetal, 10, 8, railLen, caseX + cw / 2 + 8, railY - 4, zMid);
         // короб: 5 стенок, открыт спереди (для выдвижения ящика)
         addBox(drawerGroup, matTable, cw, 16, cd, caseX, cy + ch / 2, zc);      // верх
         addBox(drawerGroup, matTable, cw, 16, cd, caseX, cy - ch / 2, zc);      // низ
