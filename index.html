@@ -95,8 +95,8 @@
     <input type="range" id="slD" min="500" max="900" step="10" value="700">
     <div class="row"><label>Высота</label><span class="val" id="slHVal">750 мм</span></div>
     <input type="range" id="slH" min="650" max="900" step="10" value="750">
-    <div class="row"><label>Толщина столешницы</label><span class="val" id="slTVal">32 мм</span></div>
-    <input type="range" id="slT" min="16" max="40" step="1" value="32">
+    <div class="row"><label>Толщина столешницы</label><span class="val" id="slTVal">16 мм</span></div>
+    <input type="range" id="slT" min="16" max="40" step="1" value="16">
 
     <div class="sec">Профиль трубы подстолья</div>
     <div class="profgrid" id="profGrid"></div>
@@ -188,7 +188,7 @@
     <div class="note" style="margin-top:4px">Заказ откроется в вашей почтовой программе письмом на <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7d1e131e1c0d3d101c1411530f08">[email&#160;protected]</a> с полной спецификацией.</div>
 
     <div class="dims">
-      <div><b id="dims">Столешница: 1600 × 700 × 32 мм</b></div>
+      <div><b id="dims">Столешница: 1600 × 700 × 16 мм</b></div>
       <div id="dimsOverall">Габариты стола: 1600 × 700 × 750 мм</div>
     </div>
   </aside>
@@ -375,7 +375,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   }
 
   // ---------- state ----------
-  const state = { W: 1600, D: 700, H: 750, T: 32, profile: "60×30", footSize: "M8", footExt: 10,
+  const state = { W: 1600, D: 700, H: 750, T: 16, profile: "60×30", footSize: "M8", footExt: 10,
     screen: "none", screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5,
     pc: "none",           // "none" | "left" | "center" | "right"
     cabinet: "none",      // "none" | "left" | "center" | "right"
@@ -1207,7 +1207,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   }
 
   document.getElementById("reset").addEventListener("click", () => {
-    state.W = 1600; state.D = 700; state.H = 750; state.T = 32;
+    state.W = 1600; state.D = 700; state.H = 750; state.T = 16;
     state.profile = "60×30";
     setFootSize("M8");
     state.footExt = 10;
@@ -1217,11 +1217,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     document.getElementById("slW").value = 1600;
     document.getElementById("slD").value = 700;
     document.getElementById("slH").value = 750;
-    document.getElementById("slT").value = 32;
+    document.getElementById("slT").value = 16;
     document.getElementById("slWVal").textContent = "1600 мм";
     document.getElementById("slDVal").textContent = "700 мм";
     document.getElementById("slHVal").textContent = "750 мм";
-    document.getElementById("slTVal").textContent = "32 мм";
+    document.getElementById("slTVal").textContent = "16 мм";
     ["slW", "slD", "slH", "slT"].forEach((id) => paintSlider(document.getElementById(id)));
     document.querySelectorAll("#profGrid .prof").forEach((x) =>
       x.classList.toggle("on", x.dataset.v === "60×30"));
