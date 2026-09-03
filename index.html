@@ -453,18 +453,30 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const n = src.length;
       const isBrk = g.startsWith("brk");
       const isTsar = g.startsWith("tsar");
+      const isLeg = g.startsWith("leg");
       const isGuide = g === "guides";
       const dD = state.D - 700;          // прирост глубины
       const zBackWeb = state.W - 60;     // спинка заднего рельса направляющей
       // глубина кронштейна: пазы у переднего торца стоят, у заднего — едут вместе с царгой
       const brkDx = (g === "brkR_front" || g === "brkL_back") ? dD : 0;
+      // Функция положения трубы-царги (горизонтальная, идёт вдоль глубины x).
+      // Торцы (усы 45°) должны иметь вылет = толщине профиля B, иначе при B≠30
+      // угол скоса ломается и в углу рамы остаётся зазор.
+      // Источник: длина 0..700 (эталон), торцы-усы по 30, середина 640.
+      const tsarX = (sx) => {
+        const baseWeb = 640, cap0 = 30;
+        if (sx < cap0) return (sx / cap0) * B;
+        if (sx > (700 - cap0)) return (state.D - B) + ((sx - (700 - cap0)) / cap0) * B;
+        return B + ((sx - cap0) / baseWeb) * ((state.D - B) - B);
+      };
+      // Смещение оси бобышки кронштейна из-за пересчёта усов (чтобы кронштейны
+      // оставались на своих пазах при любой толщине B).
+      const isTsarUp = isTsar && g.indexOf("Up") > 0;
+      const brkTabShift = isBrk ? (tsarX(BRK_BX[g]) - BRK_BX[g]) : 0;
       for (let i = 0; i < n; i += 3) {
         let sx = src[i];
         if (isTsar) {
-          // блочное растяжение царги: перед <250 фиксирован, зад >450 едет, середина тянется
-          if (sx < 250) dst[i] = sx;
-          else if (sx > 450) dst[i] = sx + dD;
-          else dst[i] = sx + (sx - 250) / 200 * dD;
+          dst[i] = tsarX(sx);
         } else if (isGuide) {
           // Направляющая — рампа из двух продольных С-реек (вдоль z) на x=92 и
           // x=606+dD, соединённых поперечинами. Верхняя и нижняя полки С-канала
@@ -496,7 +508,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
             dst[i] = xBackWeb + t * 32;
           }
         } else if (isBrk) {
-          dst[i] = sx + brkDx;
+          dst[i] = sx + brkDx + brkTabShift;
         } else {
           dst[i] = sx * rx.s + rx.t;
         }
@@ -517,6 +529,18 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
             dst[i + 1] = sy + yBase;          // бобышка остаётся на пазу кронштейна
           } else {
             dst[i + 1] = sy * ry.s + ry.t;    // труба: верх фиксирован, низ = legTop - B
+          }
+        } else if (isLeg) {
+          // Вертикальная труба-опора. Торцевые усы 45° должны иметь вылет = B,
+          // иначе при B≠30 угол скоса ломается и в углу рамы появляется зазор.
+          // Источник y: 0..700.5; нижний ус 0..30, верхний 670.5..700.5, середина 640.5.
+          const cap0 = 30, midLo = 30, midHi = 670.5, totY = 700.5, midY = 640.5;
+          if (sy < cap0) {
+            dst[i + 1] = E + (sy / cap0) * B;               // нижний ус
+          } else if (sy > midHi) {
+            dst[i + 1] = (legTop - B) + ((sy - midHi) / cap0) * B;  // верхний ус
+          } else {
+            dst[i + 1] = (E + B) + ((sy - midLo) / midY) * ((legTop - B) - (E + B)); // середина
           }
         } else {
           dst[i + 1] = sy * ry.s + ry.t;
