@@ -136,8 +136,14 @@
       <button data-v="center">По центру</button>
       <button data-v="right">Справа</button>
     </div>
-    <div class="row" id="rowDrawer" style="opacity:.4"><label>Выдвижение</label><span class="val" id="slDrawerVal">0 мм</span></div>
+    <div class="row" id="rowDrawerSlide" style="opacity:.4"><label>Выдвижение</label><span class="val" id="slDrawerVal">0 мм</span></div>
     <input type="range" id="slDrawer" min="0" max="320" step="10" value="0" disabled>
+    <div class="row" id="rowDrawerW" style="opacity:.4"><label>Ширина ящика</label><span class="val" id="slDrawerWVal">460 мм</span></div>
+    <input type="range" id="slDrawerW" min="300" max="900" step="10" value="460" disabled>
+    <div class="row" id="rowDrawerD" style="opacity:.4"><label>Глубина ящика</label><span class="val" id="slDrawerDVal">400 мм</span></div>
+    <input type="range" id="slDrawerD" min="200" max="500" step="10" value="400" disabled>
+    <div class="row" id="rowDrawerH" style="opacity:.4"><label>Высота ящика</label><span class="val" id="slDrawerHVal">180 мм</span></div>
+    <input type="range" id="slDrawerH" min="100" max="260" step="5" value="180" disabled>
 
     <div class="sec">Тумба выкатная</div>
     <div class="seg" id="cabinetSeg">
@@ -146,6 +152,12 @@
       <button data-v="center">По центру</button>
       <button data-v="right">Справа</button>
     </div>
+    <div class="row" id="rowCabW" style="opacity:.4"><label>Ширина тумбы</label><span class="val" id="slCabWVal">500 мм</span></div>
+    <input type="range" id="slCabW" min="300" max="800" step="10" value="500" disabled>
+    <div class="row" id="rowCabD" style="opacity:.4"><label>Глубина тумбы</label><span class="val" id="slCabDVal">400 мм</span></div>
+    <input type="range" id="slCabD" min="240" max="500" step="10" value="400" disabled>
+    <div class="row" id="rowCabH" style="opacity:.4"><label>Высота тумбы</label><span class="val" id="slCabHVal">500 мм</span></div>
+    <input type="range" id="slCabH" min="300" max="640" step="10" value="500" disabled>
 
     <div class="sec">Системный блок</div>
     <div class="seg" id="pcSeg">
@@ -367,7 +379,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     screen: "none", screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5,
     pc: "none",           // "none" | "left" | "center" | "right"
     cabinet: "none",      // "none" | "left" | "center" | "right"
-    drawer: false, drawerSide: "center", drawerSlide: 0 };
+    cabinetW: 500, cabinetD: 400, cabinetH: 500,   // тумба: ширина(z)/глубина(x)/высота
+    drawer: false, drawerSide: "center", drawerSlide: 0,
+    drawerW: 460, drawerD: 400, drawerH: 180 };    // ящик: ширина(z)/глубина(x)/высота
 
   // ---------- transform rules ----------
   // царга (tsarUp/tsarLo) и кронштейны (brk) следуют за профилем трубы A×B:
@@ -705,10 +719,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       extraKeys.pc = kPc;
       clearGroup(pcGroup);
       if (state.pc !== "none") {
-        const xc = state.pc === "left" ? 200
-                 : state.pc === "right" ? state.D - 200
-                 : state.D / 2;
-        const shelfY = 156, zc = 240;
+        // Положение по ШИРИНЕ стола (z): слева / по центру / справа.
+        // Глубина (x) фиксируется по центру стола.
+        const zc = state.pc === "left" ? 280
+                 : state.pc === "right" ? state.W - 280
+                 : state.W / 2;
+        const xc = state.D / 2;
+        const shelfY = 156;
         addBox(pcGroup, matMetal, 320, 8, 240, xc, shelfY, zc);          // полка
         const strapH = Math.max(40, tb - shelfY - 4);
         // 4 крепления к столешнице (стойки по углам полки)
@@ -721,7 +738,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
 
     // --- тумба выкатная (3 ящика, фасады к пользователю) ---
-    const kCab = [state.cabinet, state.W, state.D, state.H].join("|");
+    const kCab = [state.cabinet, state.W, state.D, state.H, state.cabinetW, state.cabinetD, state.cabinetH].join("|");
     if (kCab !== extraKeys.cabinet) {
       extraKeys.cabinet = kCab;
       clearGroup(cabinetGroup);
@@ -730,15 +747,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         // не задевает направляющие (x), ноги/царги (z) и элементы сверху (y)
         const sD = state.D / DIM0.D;
         const guideGap = 522 * sD - 50;                  // проём между направляющими по x
-        const tw = Math.max(200, Math.min(400, guideGap - 24));   // ширина тумбы (по глубине x)
-        const td = 500;                                   // глубина тумбы (вдоль z)
-        const margin = A / 2 + 24;                        // отступ от ног/царг по z
-        const cx = state.D / 2;                           // по центру глубины
+        const maxX = Math.max(240, guideGap - 24);       // макс. габарит тумбы по x
+        const tw = Math.min(state.cabinetD, maxX);       // габарит тумбы по x (глубина стола)
+        const margin = A / 2 + 24;                       // отступ от ног/царг по z
+        const maxZ = Math.max(260, (state.W - 60) - 2 * margin); // макс. габарит по z
+        const td = Math.min(state.cabinetW, maxZ);       // габарит тумбы по z (ширина стола)
+        const cx = state.D / 2;                          // по центру глубины
         const cz = state.cabinet === "left" ? margin + td / 2
                  : state.cabinet === "right" ? (state.W - 60) - margin - td / 2
                  : state.W / 2;
         const topY = Math.min(580, (state.H - state.T - 63) - 20);  // ниже низа направляющих
-        const bodyH = Math.max(260, topY - 80);           // высота корпуса
+        const bodyH = Math.min(state.cabinetH, Math.max(260, topY - 80)); // высота корпуса
         const cy = 80 + bodyH / 2;
         addBox(cabinetGroup, matTable, tw, bodyH, td, cx, cy, cz);   // корпус
         for (let i = 0; i < 3; i++) {
@@ -756,19 +775,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
 
     // --- ящик в коробе, крепление к царгам; лицевая сторона вдоль длинной стороны ---
-    const kDraw = [state.drawer, state.drawerSide, state.drawerSlide, state.W, state.D, state.H, state.T, A, B].join("|");
+    const kDraw = [state.drawer, state.drawerSide, state.drawerSlide, state.W, state.D, state.H, state.T, A, B, state.drawerW, state.drawerD, state.drawerH].join("|");
     if (kDraw !== extraKeys.drawer) {
       extraKeys.drawer = kDraw;
       clearGroup(drawerGroup);
       if (state.drawer) {
-        const dz = 460;                                     // ширина ящика вдоль длинной стороны (z)
-        const dx = Math.min(400, state.D - 2 * B - 60);     // глубина ящика (x)
+        const maxX = Math.max(200, state.D - 2 * B - 60);  // макс. глубина ящика по x
+        const maxZ = Math.max(300, state.W - 90);          // макс. ширина ящика по z
+        const dz = Math.min(state.drawerW, maxZ);          // ширина ящика вдоль длинной стороны (z)
+        const dx = Math.min(state.drawerD, maxX);          // глубина ящика (x)
+        const ch = Math.min(state.drawerH, 260);           // высота ящика/короба
         const zc = state.drawerSide === "left" ? 280
                  : state.drawerSide === "right" ? state.W - 280
                  : state.W / 2;                             // положение вдоль длинной стороны
         const railY = legTop - B;                           // низ верхней царги — уровень крепления
-        const cy = railY - 4 - 90;                          // центр короба/ящика
-        const cw = dx + 24, ch = 180, cd = dz + 24;         // габариты короба
+        const cy = railY - 4 - ch / 2 - 8;                  // центр короба/ящика (ниже царги)
+        const cw = dx + 24, cd = dz + 24;                   // габариты короба
         const caseX = state.D / 2;                          // короб закреплён по центру глубины
         const slide = Math.max(0, Math.min(state.drawerSlide, dx));
         const xc = caseX - slide;                           // ящик выдвигается вперёд (к x=0)
@@ -781,11 +803,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         addBox(drawerGroup, matTable, cw, ch, 16, caseX, cy, zc - cd / 2);      // левый бок
         addBox(drawerGroup, matTable, cw, ch, 16, caseX, cy, zc + cd / 2);      // правый бок
         addBox(drawerGroup, matTable, 16, ch, cd, caseX + cw / 2, cy, zc);      // задняя стенка
-        // ящик (двигается вдоль x внутри короба)
-        addBox(drawerGroup, matTable, dx, 140, dz, xc, cy, zc);
+        // ящик (двигается вдоль x внутри короба); тело чуть ниже короба
+        const innerH = Math.max(60, ch - 40);         // высота самого ящика
+        addBox(drawerGroup, matTable, dx, innerH, dz, xc, cy, zc);
         // фасад по длинной стороне + ручка
-        addBox(drawerGroup, matTable, 10, 170, dz, xc - dx / 2 - 5, cy, zc);
-        addBox(drawerGroup, matMetal, 8, 10, 150, xc - dx / 2 - 14, cy, zc);
+        const faceH = Math.max(70, ch - 10);
+        addBox(drawerGroup, matTable, 10, faceH, dz, xc - dx / 2 - 5, cy, zc);
+        addBox(drawerGroup, matMetal, 8, 10, Math.min(150, dz - 20), xc - dx / 2 - 14, cy, zc);
       }
     }
   }
@@ -1011,25 +1035,41 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     applyParams();
   });
 
-  // --- модуль: тумба (выбор стороны) ---
+  // --- модуль: тумба (выбор стороны + размеры) ---
   const cabinetBtns = document.querySelectorAll("#cabinetSeg button");
+  const slCabW = document.getElementById("slCabW");
+  const slCabD = document.getElementById("slCabD");
+  const slCabH = document.getElementById("slCabH");
+  paintSlider(slCabW); paintSlider(slCabD); paintSlider(slCabH);
+  const cabRows = ["rowCabW", "rowCabD", "rowCabH"];
   function setCabinet(v) {
     state.cabinet = v;
     cabinetBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === v));
+    const off = v === "none";
+    [slCabW, slCabD, slCabH].forEach((x) => x.disabled = off);
+    cabRows.forEach((id) => document.getElementById(id).style.opacity = off ? 0.4 : 1);
     applyParams();
   }
   cabinetBtns.forEach((b) => b.addEventListener("click", () => setCabinet(b.dataset.v)));
+  bindSlider("slCabW", "cabinetW");
+  bindSlider("slCabD", "cabinetD");
+  bindSlider("slCabH", "cabinetH");
 
-  // --- модуль: ящик (один, слева / по центру / справа) ---
+  // --- модуль: ящик (один, слева / по центру / справа + размеры) ---
   const drawerBtns = document.querySelectorAll("#drawerSeg button");
   const slDrawer = document.getElementById("slDrawer");
-  paintSlider(slDrawer);
+  const slDrawerW = document.getElementById("slDrawerW");
+  const slDrawerD = document.getElementById("slDrawerD");
+  const slDrawerH = document.getElementById("slDrawerH");
+  paintSlider(slDrawer); paintSlider(slDrawerW); paintSlider(slDrawerD); paintSlider(slDrawerH);
+  const drawRows = ["rowDrawerSlide", "rowDrawerW", "rowDrawerD", "rowDrawerH"];
   function setDrawer(v) {
     state.drawer = v !== "none";
     state.drawerSide = v;
     drawerBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === v));
-    slDrawer.disabled = v === "none";
-    document.getElementById("rowDrawer").style.opacity = v === "none" ? 0.4 : 1;
+    const off = v === "none";
+    [slDrawer, slDrawerW, slDrawerD, slDrawerH].forEach((x) => x.disabled = off);
+    drawRows.forEach((id) => document.getElementById(id).style.opacity = off ? 0.4 : 1);
     applyParams();
   }
   drawerBtns.forEach((b) => b.addEventListener("click", () => setDrawer(b.dataset.v)));
@@ -1039,6 +1079,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     paintSlider(slDrawer);
     applyParams();
   });
+  bindSlider("slDrawerW", "drawerW");
+  bindSlider("slDrawerD", "drawerD");
+  bindSlider("slDrawerH", "drawerH");
 
   // --- модуль: системный блок ---
   const pcBtns = document.querySelectorAll("#pcSeg button");
@@ -1099,10 +1142,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       mods.push("Экран: " + s);
     }
     if (state.cabinet !== "none") {
-      mods.push("Тумба выкатная: " + ({ left: "слева", center: "по центру", right: "справа" }[state.cabinet]) + ", высота 500 мм");
+      mods.push("Тумба выкатная: " + ({ left: "слева", center: "по центру", right: "справа" }[state.cabinet]) +
+                " (" + state.cabinetW + "×" + state.cabinetH + "×" + state.cabinetD + " мм)");
     }
     if (state.drawer) {
-      mods.push("Ящик: " + ({ left: "слева", center: "по центру", right: "справа" }[state.drawerSide]) + (state.drawerSlide ? ", выдвижение " + state.drawerSlide + " мм" : ""));
+      mods.push("Ящик: " + ({ left: "слева", center: "по центру", right: "справа" }[state.drawerSide]) +
+                ", " + state.drawerW + "×" + state.drawerH + "×" + state.drawerD + " мм" +
+                (state.drawerSlide ? ", выдвижение " + state.drawerSlide + " мм" : ""));
     }
     if (state.pc !== "none") {
       mods.push("Крепление системного блока: " + ({ left: "слева", center: "по центру", right: "справа" }[state.pc]));
@@ -1176,19 +1222,33 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     state.screen = "none"; state.screenW = 640; state.screenH = 500; state.screenOff = 5; state.screenOffBot = 5;
     state.pc = "none"; state.cabinet = "none";
     state.drawer = false; state.drawerSide = "center"; state.drawerSlide = 0;
+    state.cabinetW = 500; state.cabinetD = 400; state.cabinetH = 500;
+    state.drawerW = 460; state.drawerD = 400; state.drawerH = 180;
     slScreenW.value = 640; slScreen.value = 500; slScreenOff.value = 5; slScreenOffBot.value = 5; slDrawer.value = 0;
-    slScreenW.disabled = true; slScreen.disabled = true; slScreenOff.disabled = true; slScreenOffBot.disabled = true; slDrawer.disabled = true;
+    slScreenW.disabled = true; slScreen.disabled = true; slScreenOff.disabled = true; slScreenOffBot.disabled = true;
+    [slDrawer, slDrawerW, slDrawerD, slDrawerH, slCabW, slCabD, slCabH].forEach((x) => x.disabled = true);
+    slCabW.value = 500; slCabD.value = 400; slCabH.value = 500;
+    slDrawerW.value = 460; slDrawerD.value = 400; slDrawerH.value = 180;
     document.getElementById("slScreenWVal").textContent = "640 мм";
     document.getElementById("slScreenVal").textContent = "500 мм";
     document.getElementById("slScreenOffVal").textContent = "5 мм";
     document.getElementById("slScreenOffBotVal").textContent = "5 мм";
     document.getElementById("slDrawerVal").textContent = "0 мм";
+    document.getElementById("slDrawerWVal").textContent = "460 мм";
+    document.getElementById("slDrawerDVal").textContent = "400 мм";
+    document.getElementById("slDrawerHVal").textContent = "180 мм";
+    document.getElementById("slCabWVal").textContent = "500 мм";
+    document.getElementById("slCabDVal").textContent = "400 мм";
+    document.getElementById("slCabHVal").textContent = "500 мм";
     document.getElementById("rowScreenW").style.opacity = 0.4;
     document.getElementById("rowScreen").style.opacity = 0.4;
     document.getElementById("rowScreenOff").style.opacity = 0.4;
     document.getElementById("rowScreenOffBot").style.opacity = 0.4;
-    document.getElementById("rowDrawer").style.opacity = 0.4;
-    paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff); paintSlider(slScreenOffBot); paintSlider(slDrawer);
+    drawRows.forEach((id) => document.getElementById(id).style.opacity = 0.4);
+    cabRows.forEach((id) => document.getElementById(id).style.opacity = 0.4);
+    paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff); paintSlider(slScreenOffBot);
+    paintSlider(slDrawer); paintSlider(slDrawerW); paintSlider(slDrawerD); paintSlider(slDrawerH);
+    paintSlider(slCabW); paintSlider(slCabD); paintSlider(slCabH);
     screenBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
     cabinetBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
     drawerBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
