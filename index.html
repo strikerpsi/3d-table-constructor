@@ -733,8 +733,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         const sw = Math.max(100, Math.min(state.screenW, proem));       // ширина экрана
         const yc = (yLow + offBot) + hh / 2;
         const x0 = state.D / 2 - sw / 2, x1 = state.D / 2 + sw / 2;
+        // Рамы-опоры: передняя имеет ось z=0 и занимает z[-A/2, A/2],
+        // задняя — ось z=W-60 и занимает z[(W-60)-A/2, (W-60)+A/2].
+        // Экран ставим по НАРУЖНОМУ ТОРЦУ трубы (в сторону края стола), а не по центру:
+        //   передний наружный торец = -A/2
+        //   задний  наружный торец = (W-60) + A/2
         for (const side of sides) {
-          const zc = side === "back" ? (state.W - 60) : 0;   // плоскость опоры
+          const zc = side === "back" ? (state.W - 60) + A / 2 : -A / 2;
           addBox(screenGroup, matTable, sw, hh, 16, state.D / 2, yc, zc);
           addBox(screenGroup, matMetal, 18, hh, A + 12, x0, yc, zc);
           addBox(screenGroup, matMetal, 18, hh, A + 12, x1, yc, zc);
