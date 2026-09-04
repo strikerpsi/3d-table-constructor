@@ -128,8 +128,10 @@
     <input type="range" id="slScreenOff" min="0" max="300" step="5" value="5" disabled>
     <div class="row" id="rowScreenOffLong" style="opacity:.4;display:none"><label>Отступ сверху (длинный)</label><span class="val" id="slScreenOffLongVal">5 мм</span></div>
     <input type="range" id="slScreenOffLong" min="0" max="300" step="5" value="5" disabled>
-    <div class="row" id="rowScreenOffBot" style="opacity:.4"><label>Отступ снизу</label><span class="val" id="slScreenOffBotVal">5 мм</span></div>
+    <div class="row" id="rowScreenOffBot" style="opacity:.4"><label>Отступ снизу (боковые)</label><span class="val" id="slScreenOffBotVal">5 мм</span></div>
     <input type="range" id="slScreenOffBot" min="0" max="300" step="5" value="5" disabled>
+    <div class="row" id="rowScreenOffBotLong" style="opacity:.4;display:none"><label>Отступ снизу (длинный)</label><span class="val" id="slScreenOffBotLongVal">5 мм</span></div>
+    <input type="range" id="slScreenOffBotLong" min="0" max="300" step="5" value="5" disabled>
 
     <div class="sec">Ящик</div>
     <div class="seg" id="drawerSeg">
@@ -378,7 +380,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   // ---------- state ----------
   const state = { W: 1600, D: 700, H: 750, T: 16, profile: "60×30", footSize: "M8", footExt: 10,
-    screen: "none", screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5, screenOffLong: 5,
+    screen: "none", screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5, screenOffLong: 5, screenOffBotLong: 5,
     pc: "none",           // "none" | "left" | "center" | "right"
     cabinet: "none",      // "none" | "left" | "center" | "right"
     cabinetW: 500, cabinetD: 400, cabinetH: 500,   // тумба: ширина(z)/глубина(x)/высота
@@ -696,7 +698,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const legTop = state.H - state.T - 17.5;   // верх царги (низ столешницы − 17.5)
 
     // --- экран (ЛДСП): между ногами опоры (спереди/сзади/обе) или вдоль длинной стороны ---
-    const kScreen = [state.screen, state.screenW, state.screenH, state.screenOff, state.screenOffLong, state.screenOffBot, state.W, state.D, state.H, state.T, A, B].join("|");
+    const kScreen = [state.screen, state.screenW, state.screenH, state.screenOff, state.screenOffLong, state.screenOffBot, state.screenOffBotLong, state.W, state.D, state.H, state.T, A, B].join("|");
     if (kScreen !== extraKeys.screen) {
       extraKeys.screen = kScreen;
       clearGroup(screenGroup);
@@ -713,7 +715,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         // У длинного экрана собственный отдельный отступ от верха (screenOffLong),
         // а у боковых — общий (screenOff).
         const offTop = Math.max(0, Math.min(state.screenOffLong, 300));  // зазор длинного от верха
-        const offBot = Math.max(0, Math.min(state.screenOffBot, 300));   // зазор от низа (от 5 мм)
+        const offBot = Math.max(0, Math.min(state.screenOffBotLong, 300)); // зазор длинного от низа
         const hh = Math.max(120, tb - offTop - (E + offBot));          // высота = пространство между зазорами
         const sw = state.W - 60 - A;                     // между внутренними гранями ног опор
         const zc = (state.W - 60) / 2;                   // центр проёма между опорами
@@ -740,7 +742,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         //   передний наружный торец = -A/2
         //   задний  наружный торец = (W-60) + A/2
         for (const side of sides) {
-          const zc = side === "back" ? (state.W - 60) + A / 2 : -A / 2;
+          // Панель бокового экрана толщиной 16 мм по z ставим ЗАПОДЛИЦО с наружной
+          // гранью опоры: её внешняя поверхность совпадает с наружным торцом ноги,
+          // поэтому панель не выступает за опору.
+          //   наружная грань передней рамы: z = -A/2  -> центр панели = -A/2 + 8
+          //   наружная грань задней рамы:  z = (W-60)+A/2 -> центр панели = (W-60)+A/2 - 8
+          const halfD = 8;  // 16/2
+          const zc = side === "back" ? ((state.W - 60) + A / 2 - halfD) : (-A / 2 + halfD);
           // Показываем только панель экрана — крепление (металлические стойки) скрыто.
           addBox(screenGroup, matTable, sw, hh, 16, state.D / 2, yc, zc);
         }
@@ -1043,8 +1051,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const slScreenOff = document.getElementById("slScreenOff");
   const slScreenOffLong = document.getElementById("slScreenOffLong");
   const slScreenOffBot = document.getElementById("slScreenOffBot");
+  const slScreenOffBotLong = document.getElementById("slScreenOffBotLong");
   paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff);
-  paintSlider(slScreenOffLong); paintSlider(slScreenOffBot);
+  paintSlider(slScreenOffLong); paintSlider(slScreenOffBot); paintSlider(slScreenOffBotLong);
   function setScreen(v) {
     state.screen = v;
     screenBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === v));
@@ -1055,15 +1064,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     slScreen.disabled = off || !side;                 // высота — для боковых
     slScreenOff.disabled = off || !side;              // отступ боковых сверху
     slScreenOffLong.disabled = off || !long;          // отдельный отступ длинного сверху
-    slScreenOffBot.disabled = off;                    // общий отступ снизу
+    slScreenOffBot.disabled = off || !side;           // отступ боковых снизу
+    slScreenOffBotLong.disabled = off || !long;       // отдельный отступ длинного снизу
     const rowW = document.getElementById("rowScreenW");
     const rowH = document.getElementById("rowScreen");
     rowW.style.display = side && !off ? "" : "none";
     rowH.style.display = side && !off ? "" : "none";
     document.getElementById("rowScreenOff").style.display = side && !off ? "" : "none";
     document.getElementById("rowScreenOffLong").style.display = long && !off ? "" : "none";
-    document.getElementById("rowScreenOffBot").style.opacity = off ? 0.4 : 1;
-    slScreenOffBot.disabled = off;
+    document.getElementById("rowScreenOffBot").style.display = side && !off ? "" : "none";
+    document.getElementById("rowScreenOffBotLong").style.display = long && !off ? "" : "none";
     applyParams();
   }
   screenBtns.forEach((b) => b.addEventListener("click", () => setScreen(b.dataset.v)));
@@ -1095,6 +1105,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     state.screenOffBot = +slScreenOffBot.value;
     document.getElementById("slScreenOffBotVal").textContent = slScreenOffBot.value + " мм";
     paintSlider(slScreenOffBot);
+    applyParams();
+  });
+  slScreenOffBotLong.addEventListener("input", () => {
+    state.screenOffBotLong = +slScreenOffBotLong.value;
+    document.getElementById("slScreenOffBotLongVal").textContent = slScreenOffBotLong.value + " мм";
+    paintSlider(slScreenOffBotLong);
     applyParams();
   });
 
@@ -1206,7 +1222,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     if (state.screen !== "none") {
       const s = { front: "спереди", back: "сзади", both: "обе стороны", long: "длинная", triple: "три экрана" }[state.screen] || state.screen;
       const hasLong = (state.screen === "long" || state.screen === "triple");
-      mods.push("Экран: " + s + (hasLong ? ", отступ длинного сверху " + state.screenOffLong + " мм" : ""));
+      mods.push("Экран: " + s + (hasLong ? ", длинный: сверху " + state.screenOffLong + " мм, снизу " + state.screenOffBotLong + " мм" : ""));
     }
     if (state.cabinet !== "none") {
       mods.push("Тумба выкатная: " + ({ left: "слева", center: "по центру", right: "справа" }[state.cabinet]) +
@@ -1286,13 +1302,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     syncChips("#ralGrid", "#101012");
 
     // модули
-    state.screen = "none"; state.screenW = 640; state.screenH = 500; state.screenOff = 5; state.screenOffBot = 5; state.screenOffLong = 5;
+    state.screen = "none"; state.screenW = 640; state.screenH = 500; state.screenOff = 5; state.screenOffBot = 5; state.screenOffLong = 5; state.screenOffBotLong = 5;
     state.pc = "none"; state.cabinet = "none";
     state.drawer = false; state.drawerSide = "center"; state.drawerSlide = 0;
     state.cabinetW = 500; state.cabinetD = 400; state.cabinetH = 500;
     state.drawerW = 460; state.drawerD = 400; state.drawerH = 180;
-    slScreenW.value = 640; slScreen.value = 500; slScreenOff.value = 5; slScreenOffLong.value = 5; slScreenOffBot.value = 5; slDrawer.value = 0;
-    slScreenW.disabled = true; slScreen.disabled = true; slScreenOff.disabled = true; slScreenOffLong.disabled = true; slScreenOffBot.disabled = true;
+    slScreenW.value = 640; slScreen.value = 500; slScreenOff.value = 5; slScreenOffLong.value = 5; slScreenOffBot.value = 5; slScreenOffBotLong.value = 5; slDrawer.value = 0;
+    slScreenW.disabled = true; slScreen.disabled = true; slScreenOff.disabled = true; slScreenOffLong.disabled = true; slScreenOffBot.disabled = true; slScreenOffBotLong.disabled = true;
     [slDrawer, slDrawerW, slDrawerD, slDrawerH, slCabW, slCabD, slCabH].forEach((x) => x.disabled = true);
     slCabW.value = 500; slCabD.value = 400; slCabH.value = 500;
     slDrawerW.value = 460; slDrawerD.value = 400; slDrawerH.value = 180;
@@ -1301,6 +1317,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     document.getElementById("slScreenOffVal").textContent = "5 мм";
     document.getElementById("slScreenOffLongVal").textContent = "5 мм";
     document.getElementById("slScreenOffBotVal").textContent = "5 мм";
+    document.getElementById("slScreenOffBotLongVal").textContent = "5 мм";
     document.getElementById("slDrawerVal").textContent = "0 мм";
     document.getElementById("slDrawerWVal").textContent = "460 мм";
     document.getElementById("slDrawerDVal").textContent = "400 мм";
@@ -1312,10 +1329,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     document.getElementById("rowScreen").style.display = "none";
     document.getElementById("rowScreenOff").style.display = "none";
     document.getElementById("rowScreenOffLong").style.display = "none";
-    document.getElementById("rowScreenOffBot").style.opacity = 0.4;
+    document.getElementById("rowScreenOffBot").style.display = "none";
+    document.getElementById("rowScreenOffBotLong").style.display = "none";
     drawRows.forEach((id) => document.getElementById(id).style.opacity = 0.4);
     cabRows.forEach((id) => document.getElementById(id).style.opacity = 0.4);
-    paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff); paintSlider(slScreenOffLong); paintSlider(slScreenOffBot);
+    paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff); paintSlider(slScreenOffLong); paintSlider(slScreenOffBot); paintSlider(slScreenOffBotLong);
     paintSlider(slDrawer); paintSlider(slDrawerW); paintSlider(slDrawerD); paintSlider(slDrawerH);
     paintSlider(slCabW); paintSlider(slCabD); paintSlider(slCabH);
     screenBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
