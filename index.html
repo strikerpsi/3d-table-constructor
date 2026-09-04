@@ -716,9 +716,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         const xc = state.D - 8;                          // у задней длинной кромки
         const yc = (E + offBot) + hh / 2;                // от низа вверх
         addBox(screenGroup, matTable, 16, hh, sw, xc, yc, zc);
-        const brH = Math.max(offTop, 6);
-        addBox(screenGroup, matMetal, 30, brH, 8, xc, tb - brH / 2, zc - sw / 2 + 10);
-        addBox(screenGroup, matMetal, 30, brH, 8, xc, tb - brH / 2, zc + sw / 2 - 10);
       }
 
       // боковые экраны между ногами опор (спереди/сзади)
@@ -740,9 +737,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         //   задний  наружный торец = (W-60) + A/2
         for (const side of sides) {
           const zc = side === "back" ? (state.W - 60) + A / 2 : -A / 2;
+          // Показываем только панель экрана — крепление (металлические стойки) скрыто.
           addBox(screenGroup, matTable, sw, hh, 16, state.D / 2, yc, zc);
-          addBox(screenGroup, matMetal, 18, hh, A + 12, x0, yc, zc);
-          addBox(screenGroup, matMetal, 18, hh, A + 12, x1, yc, zc);
         }
       }
     }
