@@ -113,12 +113,9 @@
 
     <div class="sec">Экран (между ногами)</div>
     <div class="seg" id="screenSeg">
-      <button data-v="none" class="on">Нет</button>
-      <button data-v="front">Спереди</button>
-      <button data-v="back">Сзади</button>
-      <button data-v="both">Обе</button>
-      <button data-v="long">Длинная</button>
-      <button data-v="triple">Три экрана</button>
+      <button data-role="front">Спереди</button>
+      <button data-role="back">Сзади</button>
+      <button data-role="long">Длинная</button>
     </div>
     <div class="row" id="rowScreenW" style="opacity:.4"><label>Ширина экрана</label><span class="val" id="slScreenWVal">640 мм</span></div>
     <input type="range" id="slScreenW" min="100" max="800" step="20" value="640" disabled>
@@ -380,7 +377,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   // ---------- state ----------
   const state = { W: 1600, D: 700, H: 750, T: 16, profile: "60×30", footSize: "M8", footExt: 10,
-    screen: "none", screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5, screenOffLong: 5, screenOffBotLong: 5,
+    scrFront: false, scrBack: false, scrLong: false, screenW: 640, screenH: 500, screenOff: 5, screenOffBot: 5, screenOffLong: 5, screenOffBotLong: 5,
     pc: "none",           // "none" | "left" | "center" | "right"
     cabinet: "none",      // "none" | "left" | "center" | "right"
     cabinetW: 500, cabinetD: 400, cabinetH: 500,   // тумба: ширина(z)/глубина(x)/высота
@@ -698,17 +695,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const legTop = state.H - state.T - 17.5;   // верх царги (низ столешницы − 17.5)
 
     // --- экран (ЛДСП): между ногами опоры (спереди/сзади/обе) или вдоль длинной стороны ---
-    const kScreen = [state.screen, state.screenW, state.screenH, state.screenOff, state.screenOffLong, state.screenOffBot, state.screenOffBotLong, state.W, state.D, state.H, state.T, A, B].join("|");
+    const kScreen = [state.scrFront, state.scrBack, state.scrLong, state.screenW, state.screenH, state.screenOff, state.screenOffLong, state.screenOffBot, state.screenOffBotLong, state.W, state.D, state.H, state.T, A, B].join("|");
     if (kScreen !== extraKeys.screen) {
       extraKeys.screen = kScreen;
       clearGroup(screenGroup);
-      // режимы экранов: передний / задний / обе / длинный / три (все вместе)
-      let sides = [], wantLong = false;
-      if (state.screen === "front") sides = ["front"];
-      else if (state.screen === "back") sides = ["back"];
-      else if (state.screen === "both") sides = ["front", "back"];
-      else if (state.screen === "long") wantLong = true;
-      else if (state.screen === "triple") { sides = ["front", "back"]; wantLong = true; }
+      // Режимы экранов задаются тремя независимыми переключателями:
+      // Спереди (scrFront) / Сзади (scrBack) / Длинная (scrLong).
+      const sides = [];
+      if (state.scrFront) sides.push("front");
+      if (state.scrBack) sides.push("back");
+      const wantLong = state.scrLong;
 
       // длинный экран: от внутренней грани опоры до внутренней грани противоположной
       if (wantLong) {
@@ -1054,29 +1050,33 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const slScreenOffBotLong = document.getElementById("slScreenOffBotLong");
   paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff);
   paintSlider(slScreenOffLong); paintSlider(slScreenOffBot); paintSlider(slScreenOffBotLong);
-  function setScreen(v) {
-    state.screen = v;
-    screenBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === v));
-    const off = v === "none";
-    const long = (v === "long" || v === "triple");    // длинный экран присутствует
-    const side = (v === "front" || v === "back" || v === "both" || v === "triple"); // боковые присутствуют
-    slScreenW.disabled = off || !side;                // ширина экрана — для боковых
-    slScreen.disabled = off || !side;                 // высота — для боковых
-    slScreenOff.disabled = off || !side;              // отступ боковых сверху
-    slScreenOffLong.disabled = off || !long;          // отдельный отступ длинного сверху
-    slScreenOffBot.disabled = off || !side;           // отступ боковых снизу
-    slScreenOffBotLong.disabled = off || !long;       // отдельный отступ длинного снизу
+  // Независимые переключатели экранов: Спереди / Сзади / Длинная.
+  const scrRoleKey = { front: "scrFront", back: "scrBack", long: "scrLong" };
+  function refreshScreenUI() {
+    const side = state.scrFront || state.scrBack;   // есть боковые экраны
+    const long = state.scrLong;                      // есть длинный экран
+    screenBtns.forEach((x) => x.classList.toggle("on", !!state[scrRoleKey[x.dataset.role]]));
+    slScreenW.disabled = !side;                // ширина экрана — для боковых
+    slScreen.disabled = !side;                 // высота — для боковых
+    slScreenOff.disabled = !side;              // отступ боковых сверху
+    slScreenOffLong.disabled = !long;          // отступ длинного сверху
+    slScreenOffBot.disabled = !side;           // отступ боковых снизу
+    slScreenOffBotLong.disabled = !long;       // отступ длинного снизу
     const rowW = document.getElementById("rowScreenW");
     const rowH = document.getElementById("rowScreen");
-    rowW.style.display = side && !off ? "" : "none";
-    rowH.style.display = side && !off ? "" : "none";
-    document.getElementById("rowScreenOff").style.display = side && !off ? "" : "none";
-    document.getElementById("rowScreenOffLong").style.display = long && !off ? "" : "none";
-    document.getElementById("rowScreenOffBot").style.display = side && !off ? "" : "none";
-    document.getElementById("rowScreenOffBotLong").style.display = long && !off ? "" : "none";
+    rowW.style.display = side ? "" : "none";
+    rowH.style.display = side ? "" : "none";
+    document.getElementById("rowScreenOff").style.display = side ? "" : "none";
+    document.getElementById("rowScreenOffLong").style.display = long ? "" : "none";
+    document.getElementById("rowScreenOffBot").style.display = side ? "" : "none";
+    document.getElementById("rowScreenOffBotLong").style.display = long ? "" : "none";
     applyParams();
   }
-  screenBtns.forEach((b) => b.addEventListener("click", () => setScreen(b.dataset.v)));
+  screenBtns.forEach((b) => b.addEventListener("click", () => {
+    const role = b.dataset.role;
+    state[scrRoleKey[role]] = !state[scrRoleKey[role]];
+    refreshScreenUI();
+  }));
   slScreenW.addEventListener("input", () => {
     state.screenW = +slScreenW.value;
     document.getElementById("slScreenWVal").textContent = slScreenW.value + " мм";
@@ -1172,7 +1172,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   pcBtns.forEach((b) => b.addEventListener("click", () => setPc(b.dataset.v)));
 
   // нормализовать видимость рядов экрана для начального состояния (none)
-  setScreen("none");
+  refreshScreenUI();
 
   document.getElementById("colTop").addEventListener("input", (e) => {
     matTable.color.set(e.target.value);
@@ -1219,10 +1219,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     lines.push("Цвет металлокаркаса: " +
                colorName("#ralGrid", "#" + matMetal.color.getHexString()).split(" — ").pop());
     const mods = [];
-    if (state.screen !== "none") {
-      const s = { front: "спереди", back: "сзади", both: "обе стороны", long: "длинная", triple: "три экрана" }[state.screen] || state.screen;
-      const hasLong = (state.screen === "long" || state.screen === "triple");
-      mods.push("Экран: " + s + (hasLong ? ", длинный: сверху " + state.screenOffLong + " мм, снизу " + state.screenOffBotLong + " мм" : ""));
+    {
+      const parts = [];
+      if (state.scrFront) parts.push("спереди");
+      if (state.scrBack) parts.push("сзади");
+      if (state.scrLong) parts.push("длинный");
+      if (parts.length) {
+        let txt = "Экран: " + parts.join(", ");
+        if (state.scrLong) txt += " (длинный: сверху " + state.screenOffLong + " мм, снизу " + state.screenOffBotLong + " мм)";
+        mods.push(txt);
+      }
     }
     if (state.cabinet !== "none") {
       mods.push("Тумба выкатная: " + ({ left: "слева", center: "по центру", right: "справа" }[state.cabinet]) +
@@ -1302,7 +1308,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     syncChips("#ralGrid", "#101012");
 
     // модули
-    state.screen = "none"; state.screenW = 640; state.screenH = 500; state.screenOff = 5; state.screenOffBot = 5; state.screenOffLong = 5; state.screenOffBotLong = 5;
+    state.scrFront = false; state.scrBack = false; state.scrLong = false; state.screenW = 640; state.screenH = 500; state.screenOff = 5; state.screenOffBot = 5; state.screenOffLong = 5; state.screenOffBotLong = 5;
     state.pc = "none"; state.cabinet = "none";
     state.drawer = false; state.drawerSide = "center"; state.drawerSlide = 0;
     state.cabinetW = 500; state.cabinetD = 400; state.cabinetH = 500;
@@ -1336,7 +1342,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     paintSlider(slScreenW); paintSlider(slScreen); paintSlider(slScreenOff); paintSlider(slScreenOffLong); paintSlider(slScreenOffBot); paintSlider(slScreenOffBotLong);
     paintSlider(slDrawer); paintSlider(slDrawerW); paintSlider(slDrawerD); paintSlider(slDrawerH);
     paintSlider(slCabW); paintSlider(slCabD); paintSlider(slCabH);
-    screenBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
+    refreshScreenUI();
     cabinetBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
     drawerBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
     pcBtns.forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
